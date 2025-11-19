@@ -61,7 +61,7 @@
             width: 100%;
             max-width: 400px;
             height: 100%;
-            z-index: 50; /* Above all content and floating controls */
+            z-index: 50;
             padding: 2.5rem 1.5rem;
             transform: translateX(0);
             transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.3s;
@@ -71,10 +71,10 @@
             transform: translateX(100%);
         }
         
-        /* Floating Controls (Top Right) - Smaller and more refined */
+        /* Floating Controls (Top Right) */
         #dashboard-controls {
             transition: opacity 0.3s ease-in-out;
-            z-index: 60; /* Above the sidebar */
+            z-index: 60;
         }
         
         /* Fullscreen control styling */
@@ -89,20 +89,6 @@
             transform: translateX(100%);
         }
 
-        /* Specific CSS for Dynamic Color Flow (Mode 2) */
-        @keyframes colorChange {
-            0% { background-color: #ef4444; } /* Red-500 */
-            25% { background-color: #3b82f6; } /* Blue-500 */
-            50% { background-color: #10b981; } /* Emerald-500 */
-            75% { background-color: #f97316; } /* Orange-500 */
-            100% { background-color: #ef4444; }
-        }
-        .color-flow-active {
-            animation-name: colorChange;
-            animation-iteration-count: infinite;
-            animation-timing-function: ease-in-out;
-        }
-        
         /* --- Dashboard Card Animation (Fade-In) --- */
         @keyframes fadeInUp {
             from { opacity: 0; transform: translateY(20px); }
@@ -113,21 +99,36 @@
             opacity: 0;
         }
 
-        /* 🚀 REDESIGN CHANGE: OVERHAUL CARD STYLING FOR WIDE BUTTONS */
+        /* 🚀 CORE REDESIGN: PILL SHAPE STYLES */
         .btn-card {
-            /* Removed aspect-square to allow wide layout */
-            /* Increased padding (p-6 py-10) for height, wide shadow, and strong hover effect */
-            @apply w-full flex items-center justify-start py-8 px-12 rounded-3xl font-extrabold transition duration-300 shadow-xl hover:shadow-2xl hover:scale-[1.01] cursor-pointer;
+            /* Increased vertical padding from py-4 to py-5 for more space */
+            @apply w-full flex items-center justify-start py-5 px-12 rounded-full font-extrabold transition duration-200 shadow-lg hover:shadow-xl hover:scale-[1.005] cursor-pointer text-white;
         }
         
         .card-icon {
-            /* Increased icon size for dominance */
-            @apply text-5xl mr-8; 
+            /* Ensures proper spacing and icon size */
+            @apply text-3xl mr-6; 
         }
         .card-label {
-            /* Increased label size and weight */
-            @apply text-3xl font-bold leading-tight; 
+            /* Reduced font size for better fit in capsule */
+            @apply text-2xl font-bold leading-tight; 
         }
+
+        /* --- Applying Specific Colors/Shapes --- */
+        
+        /* This class forces the specific shape rendering reliably */
+        .mode-btn-pill {
+            border-radius: 9999px; /* Force rounded-full */
+            /* Adjusted padding to match py-5 (1.25rem) */
+            padding-top: 1.25rem;
+            padding-bottom: 1.25rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1); 
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .mode-btn-pill:hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1); 
+        }
+        
     </style>
 </head>
 
@@ -144,31 +145,19 @@
                 Screen Saver Studio
             </h1>
             
-            <div id="mode-description-card" class="mb-14 p-8 rounded-3xl bg-gray-50/70 dark:bg-gray-800/70 backdrop-blur-sm transition-all duration-300 shadow-xl text-center h-40 flex flex-col justify-center border border-gray-200 dark:border-gray-700">
-                <h2 id="desc-title" class="text-2xl font-extrabold text-gray-900 dark:text-gray-100 mb-2 transition-colors duration-300">
-                    👋 Select a Screen Saver Mode
-                </h2>
-                <p id="desc-text" class="text-lg text-gray-600 dark:text-gray-400 transition-colors duration-300">
-                    Hover over any option below to see a detailed description.
-                </p>
-            </div>
-
-            <div class="grid grid-cols-1 gap-6 w-full mx-auto justify-center">
+            <div class="grid grid-cols-1 gap-6 w-full mx-auto justify-center mt-14">
                 
-                <button onclick="setMode('timer')" class="btn-card bg-indigo-600 text-white hover:bg-indigo-700" 
-                    onmouseover="setModeDescription('timer')" onmouseout="setModeDescription('default')">
+                <button onclick="setMode('timer')" class="btn-card mode-btn-pill bg-indigo-600 hover:bg-indigo-700">
                     <span class="card-icon">⏲️</span>
                     <span class="card-label">Digital Countdown Timer</span>
                 </button>
                 
-                <button onclick="setMode('color-flow')" class="btn-card bg-pink-600 text-white hover:bg-pink-700"
-                    onmouseover="setModeDescription('color-flow')" onmouseout="setModeDescription('default')">
+                <button onclick="setMode('color-flow')" class="btn-card mode-btn-pill bg-pink-600 hover:bg-pink-700">
                     <span class="card-icon">🌈</span>
                     <span class="card-label">Dynamic Color Flow</span>
                 </button>
                 
-                <button onclick="setMode('clock')" class="btn-card bg-yellow-600 text-white hover:bg-yellow-700"
-                    onmouseover="setModeDescription('clock')" onmouseout="setModeDescription('default')">
+                <button onclick="setMode('clock')" class="btn-card mode-btn-pill bg-yellow-600 hover:bg-yellow-700">
                     <span class="card-icon">⏰</span>
                     <span class="card-label">Current Digital Time</span>
                 </button>
@@ -203,7 +192,7 @@
     </div>
 
     <script>
-        // --- Global State and Constants (Unchanged) ---
+        // --- Global State and Constants ---
         const $ = (id) => document.getElementById(id);
         
         const STATE = {
@@ -230,10 +219,10 @@
         };
 
         const MODE_DETAILS = {
-            'default': { icon: '👋', title: 'Select a Screen Saver Mode', description: 'Hover over any option below to see a detailed description.' },
-            'timer': { icon: '⏲️', title: 'Digital Timer (Countdown)', description: 'A full-screen timer that counts down from an adjustable time. Keeps your screen awake while running.' },
-            'color-flow': { icon: '🌈', title: 'Dynamic Color Flow', description: 'A blank screen with background colors that smoothly cycle through the spectrum. Control the transition speed.' },
-            'clock': { icon: '⏰', title: 'Current Digital Time', description: 'A minimal clock displaying the current time and date on a full-screen background.' },
+            'default': { icon: '💻', title: 'Select Mode', description: '' }, 
+            'timer': { icon: '⏲️', title: 'Digital Timer (Countdown)', description: '' },
+            'color-flow': { icon: '🌈', title: 'Dynamic Color Flow', description: '' },
+            'clock': { icon: '⏰', title: 'Current Digital Time', description: '' },
         };
 
         // --- Utility Functions (Unchanged) ---
@@ -246,7 +235,7 @@
             return hours > 0 ? `${pad(hours)}:${pad(minutes)}:${pad(seconds)}` : `${pad(minutes)}:${pad(seconds)}`;
         }
 
-        // --- Core UI Management (Unchanged) ---
+        // --- Core UI Management ---
 
         function setMode(newMode) {
             cleanupMode(STATE.mode);
@@ -280,7 +269,6 @@
                 document.body.classList.remove('is-fullscreen');
                 STATE.timer.isFullScreen = false;
                 if(document.fullscreenElement) document.exitFullscreen();
-                setModeDescription('default');
             } else {
                 $dashboard.classList.replace('visible-mode', 'hidden-mode');
                 
@@ -293,15 +281,6 @@
             }
         }
         
-        function setModeDescription(modeKey) {
-            const details = MODE_DETAILS[modeKey] || MODE_DETAILS['default'];
-            const $title = $('desc-title');
-            const $text = $('desc-text');
-            
-            if ($title) $title.innerHTML = `${details.icon} ${details.title}`;
-            if ($text) $text.innerHTML = details.description;
-        }
-
         function initMode(mode) {
             const $modeContent = $('mode-content');
             const $settingsPanel = $('mode-settings-panel');
@@ -401,7 +380,6 @@
              STATE.isDarkMode = true;
              document.body.classList.add('dark-mode');
              updateDarkModeIcons();
-             setModeDescription('default');
         });
 
 
