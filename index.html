@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Immersive Screen Saver Studio</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for aesthetic */
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.5s, color 0.5s;
+        }
+        
+        /* Dashboard and Screensaver container positioning for smooth transition */
+        #dashboard {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 20; /* Higher than screensaver */
+            transition: opacity 0.5s ease-in-out, visibility 0.5s;
+        }
+        
+        .screensaver-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            transition: opacity 0.5s ease-in-out, visibility 0.5s; /* Increased transition duration */
+        }
+        
+        /* Utility classes for smooth mode switching */
+        .visible-mode {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+        .hidden-mode {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        /* Dark/Light Mode Backgrounds */
+        .dark-mode .screensaver-container {
+            background-color: #111827; /* Dark background */
+            color: #f3f4f6;
+        }
+        .light-mode .screensaver-container {
+            background-color: #f9fafb; /* Light background */
+            color: #1f2937;
+        }
+
+        /* Specific styles for the Timer */
+        #timer-display {
+            font-size: 10vw;
+            line-height: 1;
+            transition: font-size 0.5s ease-in-out; /* Smooth font size change on fullscreen */
+        }
+        #clock-display {
+            font-size: 12vw;
+            line-height: 1;
+        }
+
+        /* Fullscreen control styling */
+        .controls-panel {
+            transition: all 0.3s ease-in-out;
+        }
+        .is-fullscreen .controls-panel {
+            opacity: 0 !important;
+            visibility: hidden !important;
+        }
+        /* Ensure fullscreen mode respects controls visibility */
+        .is-fullscreen #dashboard, .is-fullscreen #dashboard-controls {
+            display: none !important;
+        }
+
+        /* Specific CSS for Dynamic Color Flow (Mode 4) */
+        @keyframes colorChange {
+            0% { background-color: #ef4444; } /* Red-500 */
+            25% { background-color: #3b82f6; } /* Blue-500 */
+            50% { background-color: #10b981; } /* Emerald-500 */
+            75% { background-color: #f97316; } /* Orange-500 */
+            100% { background-color: #ef4444; }
+        }
+        .color-flow-active {
+            animation-name: colorChange;
+            animation-iteration-count: infinite;
+            animation-timing-function: ease-in-out;
+        }
+        
+        /* --- Card Animation (New) --- */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .animate-card-in {
+            animation: fadeInUp 0.6s ease-out 0.2s forwards;
+            opacity: 0; /* Start invisible for animation */
+        }
+
+        /* Button styling - Removed fixed padding/size to allow aspect-square to control dimensions */
+        .btn-card {
+            @apply w-full aspect-square flex flex-col items-center justify-center p-4 rounded-3xl font-bold transition duration-300 shadow-xl hover:shadow-2xl hover:scale-[1.02] cursor-pointer;
+        }
+    </style>
+</head>
+
+<body class="dark-mode transition duration-500 ease-in-out">
+
+    <!-- Main Dashboard/Selector - Starts Visible -->
+    <div id="dashboard" class="visible-mode h-screen w-screen flex flex-col items-center justify-center p-8">
+        
+        <!-- Dark Mode Toggle Button for Dashboard (Top Right Corner) -->
+        <button onclick="toggleDarkMode()" class="absolute top-6 right-6 p-4 rounded-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-md shadow-2xl text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-300 z-50">
+            <span id="dark-mode-icon-dashboard">
+                <!-- Icon will be set by JS on initialization -->
+            </span>
+        </button>
+
+        <!-- The Main Card Layout -->
+        <div id="dashboard-card" class="w-full max-w-7xl p-10 sm:p-14 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-[3rem] shadow-2xl animate-card-in">
+
+            <h1 class="text-4xl sm:text-5xl font-extrabold mb-12 text-center text-gray-900 dark:text-gray-100">
+                Screen Saver Studio
+            </h1>
+
+            <!-- New Grid Layout for Uniform Cards -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 w-full mx-auto justify-center">
+                
+                <!-- Mode 1: Timer -->
+                <button onclick="setMode('timer')" class="btn-card bg-indigo-600 text-white hover:bg-indigo-700">
+                    <span class="text-4xl mb-1.5">⏲️</span>
+                    <span class="text-xs sm:text-sm leading-tight">Digital Timer (Countdown)</span>
+                </button>
+                
+                <!-- Mode 2: Horizontal Lines -->
+                <button onclick="setMode('h-lines')" class="btn-card bg-sky-600 text-white hover:bg-sky-700">
+                    <span class="text-4xl mb-1.5">➖</span>
+                    <span class="text-xs sm:text-sm leading-tight">Horizontal Flowing Lines</span>
+                </button>
+                
+                <!-- Mode 3: Vertical Lines -->
+                <button onclick="setMode('v-lines')" class="btn-card bg-teal-600 text-white hover:bg-teal-700">
+                    <span class="text-4xl mb-1.5">&#x275A;</span>
+                    <span class="text-xs sm:text-sm leading-tight">Vertical Flowing Lines</span>
+                </button>
+                
+                <!-- Mode 4/5: Dynamic Color Flow (Blank screen with frequency) -->
+                <button onclick="setMode('color-flow')" class="btn-card bg-pink-600 text-white hover:bg-pink-700">
+                    <span class="text-4xl mb-1.5">🌈</span>
+                    <span class="text-xs sm:text-sm leading-tight">Dynamic Color Flow (Frequency)</span>
+                </button>
+                
+                <!-- Mode 6: Current Time -->
+                <button onclick="setMode('clock')" class="btn-card bg-yellow-600 text-white hover:bg-yellow-700">
+                    <span class="text-4xl mb-1.5">⏰</span>
+                    <span class="text-xs sm:text-sm leading-tight">Current Digital Time</span>
+                </button>
+                
+                <!-- Reset Button -->
+                <button onclick="window.location.reload()" class="btn-card border-4 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <span class="text-4xl mb-1.5">🔄</span>
+                    <span class="text-xs sm:text-sm leading-tight">Reload App</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Screen Saver View - Starts Hidden -->
+    <div id="screensaver-view" class="screensaver-container hidden-mode">
+        
+        <!-- Controls Panel (Visible when not fullscreen) - Rounded corners updated to 2xl -->
+        <div id="dashboard-controls" class="controls-panel absolute top-6 right-6 z-50 flex space-x-4 p-4 bg-white/70 dark:bg-gray-900/70 backdrop-blur-md rounded-2xl shadow-2xl">
+            <button onclick="goFullscreen()" class="p-3 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600 transition">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-maximize-2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" x2="14" y1="3" y2="10"/><line x1="3" x2="10" y1="21" y2="14"/></svg>
+            </button>
+            <button onclick="toggleDarkMode()" class="p-3 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600 transition">
+                <span id="dark-mode-icon">
+                    <!-- Icon will be set by JS on initialization -->
+                </span>
+            </button>
+            <button onclick="setMode('dashboard')" class="p-3 rounded-full bg-red-500 text-white hover:bg-red-600 transition">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+        </div>
+
+        <!-- Mode-specific Content Container -->
+        <div id="mode-content" class="h-full w-full flex items-center justify-center relative">
+            <!-- Content will be injected here by JavaScript -->
+        </div>
+
+    </div>
+
+    <script>
+        // --- Global State and Constants ---
+        const $ = (id) => document.getElementById(id);
+        
+        const STATE = {
+            mode: 'dashboard', // 'dashboard', 'timer', 'h-lines', 'v-lines', 'color-flow', 'clock'
+            isDarkMode: true,
+            timer: {
+                initialSeconds: 300, // 5 minutes default
+                remainingSeconds: 300,
+                isRunning: false,
+                intervalId: null,
+                bgColor: '#2563EB', // Default blue-600
+                isFullScreen: false,
+                wakeLock: null, // NEW: Property for the wake lock object
+            },
+            colorFlow: {
+                speed: 3000, // 3000ms (3 seconds) for one cycle
+                intervalId: null,
+            },
+            canvas: {
+                id: 'screensaver-canvas',
+                ctx: null,
+                animationFrameId: null,
+            },
+            clockInterval: null,
+        };
+
+        const THEMES = {
+            light: { bg: '#f9fafb', text: '#1f2937' },
+            dark: { bg: '#111827', text: '#f3f4f6' },
+        };
+
+        // --- Utility Functions ---
+
+        /**
+         * Converts total seconds into HH:MM:SS format.
+         * @param {number} totalSeconds
+         * @returns {string}
+         */
+        function formatTime(totalSeconds) {
+            if (totalSeconds < 0) totalSeconds = 0;
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+
+            const pad = (num) => String(num).padStart(2, '0');
+
+            if (hours > 0) {
+                return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+            }
+            return `${pad(minutes)}:${pad(seconds)}`;
+        }
+
+        // --- Core UI Management ---
+
+        /**
+         * Sets the application mode and updates the UI.
+         * Uses opacity and visibility for smooth transitions.
+         * @param {string} newMode
+         */
+        function setMode(newMode) {
+            // Cleanup previous mode, including releasing wake lock if needed
+            cleanupMode(STATE.mode);
+
+            STATE.mode = newMode;
+            const $dashboard = $('dashboard');
+            const $dashboardCard = $('dashboard-card'); // Get the new card element
+            const $screensaverView = $('screensaver-view');
+            const $modeContent = $('mode-content');
+            
+            $modeContent.innerHTML = '';
+            $screensaverView.classList.remove('color-flow-active');
+            $screensaverView.style.backgroundColor = '';
+
+            const transitionDuration = 500; // Matches CSS transition duration
+
+            if (newMode === 'dashboard') {
+                // Transition to Dashboard: Hide screensaver, then show dashboard
+                $screensaverView.classList.replace('visible-mode', 'hidden-mode');
+
+                setTimeout(() => {
+                    $dashboard.classList.replace('hidden-mode', 'visible-mode');
+                    // Re-apply animation class to trigger fade-in effect on dashboard card
+                    $dashboardCard.classList.add('animate-card-in');
+                }, transitionDuration); 
+
+                document.body.classList.remove('is-fullscreen');
+                STATE.timer.isFullScreen = false;
+                document.exitFullscreen();
+            } else {
+                // Transition to Screensaver Mode: Hide dashboard, then initialize and show screensaver
+                $dashboard.classList.replace('visible-mode', 'hidden-mode');
+                
+                // Remove animation class so it can be re-applied later
+                $dashboardCard.classList.remove('animate-card-in');
+
+                setTimeout(() => {
+                    $screensaverView.classList.replace('hidden-mode', 'visible-mode');
+                    initMode(newMode);
+                }, transitionDuration); 
+            }
+        }
+
+        /**
+         * Initializes the UI and logic for the selected mode.
+         * @param {string} mode
+         */
+        function initMode(mode) {
+            const $modeContent = $('mode-content');
+
+            switch (mode) {
+                case 'timer':
+                    renderTimerControls($modeContent);
+                    break;
+                case 'clock':
+                    renderClock($modeContent);
+                    break;
+                case 'color-flow':
+                    renderColorFlowControls($modeContent);
+                    break;
+                case 'h-lines':
+                case 'v-lines':
+                    renderCanvas($modeContent);
+                    initCanvas();
+                    startLineAnimation(mode);
+                    break;
+            }
+        }
+
+        /**
+         * Cleans up intervals, listeners, and animations for the current mode.
+         * @param {string} mode
+         */
+        function cleanupMode(mode) {
+            switch (mode) {
+                case 'timer':
+                    stopTimer(); // Calls releaseWakeLock()
+                    STATE.timer.isRunning = false;
+                    STATE.timer.remainingSeconds = STATE.timer.initialSeconds;
+                    break;
+                case 'clock':
+                    if (STATE.clockInterval) clearInterval(STATE.clockInterval);
+                    STATE.clockInterval = null;
+                    break;
+                case 'color-flow':
+                    break;
+                case 'h-lines':
+                case 'v-lines':
+                    if (STATE.canvas.animationFrameId) cancelAnimationFrame(STATE.canvas.animationFrameId);
+                    STATE.canvas.ctx = null;
+                    STATE.canvas.animationFrameId = null;
+                    break;
+            }
+        }
+        
+        // --- Wake Lock API Functions (NEW) ---
+
+        /** Requests a screen wake lock if the API is available. */
+        async function requestWakeLock() {
+            if ('wakeLock' in navigator) {
+                try {
+                    // Request a screen wake lock
+                    STATE.timer.wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('Screen Wake Lock requested successfully.');
+                    
+                    // Re-request the lock if the screen is unlocked (e.g., app moved to background)
+                    STATE.timer.wakeLock.addEventListener('release', () => {
+                        console.log('Screen Wake Lock released by system.');
+                        // If timer is still running, attempt to re-request
+                        if (STATE.timer.isRunning) {
+                            requestWakeLock();
+                        }
+                    });
+                } catch (err) {
+                    // This often fails if the document is not visible or user interaction is required
+                    console.error(`Wake Lock request failed: ${err.name}, ${err.message}`);
+                }
+            } else {
+                console.log('Wake Lock API not supported in this browser/environment. Screen may turn off.');
+            }
+        }
+
+        /** Releases the current screen wake lock. */
+        function releaseWakeLock() {
+            if (STATE.timer.wakeLock) {
+                STATE.timer.wakeLock.release()
+                    .then(() => {
+                        console.log('Screen Wake Lock released.');
+                        STATE.timer.wakeLock = null;
+                    })
+                    .catch(err => {
+                        console.error('Failed to release Wake Lock:', err);
+                    });
+            }
+        }
+        // --- End Wake Lock API Functions ---
+
+
+        // --- Dark Mode ---
+
+        /**
+         * Updates the icons to reflect the opposite mode (what will happen when clicked).
+         */
+        function updateDarkModeIcons() {
+            // Icon to show: Sun if currently Dark Mode (user can click to switch to Light)
+            // Icon to show: Moon if currently Light Mode (user can click to switch to Dark)
+            const iconHtml = STATE.isDarkMode 
+                ? '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sun"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>' // Sun (Light Mode Icon)
+                : '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-moon-star"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/><path d="M16 4.7l.6.5"/><path d="M17.8 7l.5-.6"/><path d="M15.4 10.3l-.6.5"/><path d="M14.2 7l-.5-.6"/></svg>'; // Moon (Dark Mode Icon)
+
+            const $dmIcon = $('dark-mode-icon');
+            const $dmIconDashboard = $('dark-mode-icon-dashboard');
+
+            if ($dmIcon) $dmIcon.innerHTML = iconHtml;
+            if ($dmIconDashboard) $dmIconDashboard.innerHTML = iconHtml;
+        }
+
+        /**
+         * Toggles between dark and light mode.
+         */
+        function toggleDarkMode() {
+            STATE.isDarkMode = !STATE.isDarkMode;
+            document.body.classList.toggle('dark-mode', STATE.isDarkMode);
+            document.body.classList.toggle('light-mode', !STATE.isDarkMode);
+            
+            updateDarkModeIcons();
+
+            // Re-initialize canvas/clock if running to update colors
+            if (STATE.mode === 'h-lines' || STATE.mode === 'v-lines' || STATE.mode === 'clock') {
+                cleanupMode(STATE.mode);
+                initMode(STATE.mode);
+            }
+        }
+
+        // Initialize Dark Mode on load (runs once to set initial state)
+        document.addEventListener('DOMContentLoaded', () => {
+             // Run toggle twice to ensure initial state is set and icons are drawn correctly
+             toggleDarkMode(); 
+             toggleDarkMode();
+        });
+
+
+        // --- Fullscreen Handling ---
+        
+        /**
+         * Enters fullscreen mode for the screen saver view.
+         */
+        function goFullscreen() {
+            const elem = $('screensaver-view');
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen();
+            } else if (elem.webkitRequestFullscreen) { /* Safari */
+                elem.webkitRequestFullscreen();
+            } else if (elem.msRequestFullscreen) { /* IE11 */
+                elem.msRequestFullscreen();
+            }
+
+            STATE.timer.isFullScreen = true;
+            document.body.classList.add('is-fullscreen');
+            
+            // Adjust timer display size immediately if in timer mode
+            if (STATE.mode === 'timer') {
+                updateTimerDisplay();
+            }
+        }
+
+        /**
+         * Exits fullscreen mode listener.
+         */
+        document.addEventListener('fullscreenchange', () => {
+            const isFullScreen = document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
+            STATE.timer.isFullScreen = !!isFullScreen;
+
+            if (!isFullScreen) {
+                document.body.classList.remove('is-fullscreen');
+            }
+            
+            // Adjust timer display size when fullscreen status changes
+            if (STATE.mode === 'timer') {
+                updateTimerDisplay();
+            }
+        });
+
+
+        // --- MODE 1: Digital Timer (Countdown) ---
+
+        /** Renders the timer UI, controls, and display. */
+        function renderTimerControls($container) {
+            // Apply theme text color based on dark mode status to the display for visibility
+            const theme = STATE.isDarkMode ? THEMES.dark : THEMES.light;
+
+            $container.innerHTML = `
+                <div class="flex flex-col items-center justify-center p-6 rounded-3xl backdrop-blur-md">
+                    <div id="timer-display" class="font-mono font-extrabold transition-all duration-300" style="color: ${theme.text};">
+                        ${formatTime(STATE.timer.remainingSeconds)}
+                    </div>
+                    
+                    <!-- Timer Controls -->
+                    <div id="timer-controls" class="controls-panel mt-12 flex flex-col items-center space-y-6 text-gray-900 dark:text-gray-100 p-8 bg-white/50 dark:bg-gray-900/50 backdrop-blur-md rounded-2xl shadow-xl">
+                        <!-- Time Adjusters -->
+                        <div class="flex space-x-6">
+                            <button onclick="adjustTime(-60)" class="p-3 bg-gray-200 dark:bg-gray-700 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition shadow-md">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-minus"><path d="M5 12h14"/></svg>
+                            </button>
+                            <span class="text-xl font-semibold p-3 min-w-[120px] text-center">+/- 1 MIN</span>
+                            <button onclick="adjustTime(60)" class="p-3 bg-gray-200 dark:bg-gray-700 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition shadow-md">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                            </button>
+                        </div>
+                        
+                        <!-- Start/Stop/Reset -->
+                        <div class="flex space-x-4 w-full">
+                            <button id="timer-start-btn" onclick="toggleTimer()" class="btn-card flex-1 bg-green-500 text-white hover:bg-green-600 !w-auto !aspect-auto !p-3 !rounded-xl !shadow-none">
+                                Start
+                            </button>
+                            <button onclick="resetTimer()" class="btn-card flex-1 bg-red-500 text-white hover:bg-red-600 !w-auto !aspect-auto !p-3 !rounded-xl !shadow-none">
+                                Reset
+                            </button>
+                        </div>
+                        
+                        <!-- Color Picker -->
+                        <div class="flex items-center space-x-3 pt-2">
+                            <span class="font-semibold">Background Color:</span>
+                            <input type="color" id="bg-color-picker" value="${STATE.timer.bgColor}" onchange="changeTimerBgColor(this.value)" class="w-12 h-12 rounded-lg cursor-pointer border-4 border-gray-300 dark:border-gray-700 p-1 shadow-inner">
+                        </div>
+                    </div>
+                </div>
+            `;
+            // Set initial background color
+            $('screensaver-view').style.backgroundColor = STATE.timer.bgColor;
+            
+            // Initial call to update the display size
+            updateTimerDisplay();
+        }
+
+        /** Updates the timer display size based on fullscreen status. */
+        function updateTimerDisplay() {
+            const $display = $('timer-display');
+            if (!$display) return;
+            // Use 16vw for fullscreen, 10vw for windowed. CSS transition handles the smoothness.
+            const size = STATE.timer.isFullScreen ? '16vw' : '10vw'; 
+            $display.style.fontSize = size;
+        }
+
+        /**
+         * Adjusts the timer's remaining time.
+         * @param {number} deltaSeconds
+         */
+        function adjustTime(deltaSeconds) {
+            if (STATE.timer.isRunning) return;
+            
+            STATE.timer.initialSeconds = Math.max(0, STATE.timer.initialSeconds + deltaSeconds);
+            STATE.timer.remainingSeconds = STATE.timer.initialSeconds;
+            
+            const $display = $('timer-display');
+            if ($display) $display.textContent = formatTime(STATE.timer.remainingSeconds);
+        }
+
+        /** Starts or pauses the countdown timer. */
+        function toggleTimer() {
+            STATE.timer.isRunning = !STATE.timer.isRunning;
+            const $startBtn = $('timer-start-btn');
+            
+            const $timerControls = $('timer-controls');
+            const $dashboardControls = $('dashboard-controls');
+
+            if (STATE.timer.isRunning) {
+                $startBtn.textContent = 'Pause';
+                $startBtn.classList.replace('bg-green-500', 'bg-orange-500');
+                $startBtn.classList.replace('hover:bg-green-600', 'hover:bg-orange-600');
+                startTimer();
+                // Hide controls when starting (uses opacity/pointer-events for smooth fade)
+                $timerControls?.classList.add('hidden-mode');
+                $dashboardControls?.classList.add('hidden-mode');
+            } else {
+                $startBtn.textContent = 'Resume';
+                $startBtn.classList.replace('bg-orange-500', 'bg-green-500');
+                $startBtn.classList.replace('hover:bg-orange-600', 'hover:bg-green-600');
+                stopTimer();
+                // Show controls when paused
+                $timerControls?.classList.remove('hidden-mode');
+                $dashboardControls?.classList.remove('hidden-mode');
+            }
+        }
+
+        /** Implements the countdown logic. */
+        function startTimer() {
+            if (STATE.timer.intervalId) clearInterval(STATE.timer.intervalId);
+
+            STATE.timer.intervalId = setInterval(() => {
+                STATE.timer.remainingSeconds--;
+
+                const $display = $('timer-display');
+                if ($display) $display.textContent = formatTime(STATE.timer.remainingSeconds);
+                
+                if (STATE.timer.remainingSeconds <= 0) {
+                    stopTimer();
+                    STATE.timer.isRunning = false;
+                    $display.textContent = "Time's Up!";
+                    $display.classList.add('animate-pulse', 'text-red-500');
+                    
+                    // Show controls when timer finishes
+                    $('timer-controls')?.classList.remove('hidden-mode');
+                    $('dashboard-controls')?.classList.remove('hidden-mode');
+                }
+            }, 1000);
+
+            // Request wake lock when the timer starts
+            requestWakeLock();
+        }
+
+        function stopTimer() {
+            if (STATE.timer.intervalId) clearInterval(STATE.timer.intervalId);
+            STATE.timer.intervalId = null;
+
+            // Release wake lock when paused or stopped
+            releaseWakeLock();
+        }
+
+        function resetTimer() {
+            stopTimer();
+            STATE.timer.isRunning = false;
+            STATE.timer.remainingSeconds = STATE.timer.initialSeconds;
+            
+            const $display = $('timer-display');
+            if ($display) {
+                $display.textContent = formatTime(STATE.timer.remainingSeconds);
+                $display.classList.remove('animate-pulse', 'text-red-500');
+            }
+            
+            const $startBtn = $('timer-start-btn');
+            if ($startBtn) {
+                $startBtn.textContent = 'Start';
+                $startBtn.classList.replace('bg-orange-500', 'bg-green-500');
+                $startBtn.classList.replace('hover:bg-orange-600', 'hover:bg-green-600');
+            }
+            
+            // Show controls when reset
+            $('timer-controls')?.classList.remove('hidden-mode');
+            $('dashboard-controls')?.classList.remove('hidden-mode');
+        }
+
+        /**
+         * Changes the background color of the screen saver view for the timer.
+         * @param {string} colorHex
+         */
+        function changeTimerBgColor(colorHex) {
+            STATE.timer.bgColor = colorHex;
+            $('screensaver-view').style.backgroundColor = colorHex;
+        }
+
+        // --- MODE 6: Current Time (Clock) ---
+
+        /** Renders the clock UI. */
+        function renderClock($container) {
+            const theme = STATE.isDarkMode ? THEMES.dark : THEMES.light;
+            $container.innerHTML = `
+                <div id="clock-display" class="font-mono font-extrabold" style="color: ${theme.text};">
+                    --:--:--
+                </div>
+            `;
+            $('screensaver-view').style.backgroundColor = theme.bg;
+            // Hide mode-specific controls
+            $('dashboard-controls')?.classList.add('hidden-mode');
+            setTimeout(() => {
+                // Show floating controls after transition completes
+                if (!STATE.timer.isFullScreen) {
+                    $('dashboard-controls')?.classList.remove('hidden-mode');
+                }
+            }, 500);
+            startClock(); // Start the clock immediately after rendering
+        }
+
+        /** Starts the clock interval. */
+        function startClock() {
+            const $clockDisplay = $('clock-display');
+            
+            function updateTime() {
+                const now = new Date();
+                const hours = now.getHours();
+                const minutes = now.getMinutes();
+                const seconds = now.getSeconds();
+
+                const timeString = `${String(hours % 12 || 12).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${hours >= 12 ? 'PM' : 'AM'}`;
+                
+                if ($clockDisplay) $clockDisplay.textContent = timeString;
+            }
+
+            // Initial call and set interval
+            updateTime();
+            STATE.clockInterval = setInterval(updateTime, 1000);
+        }
+
+        // --- MODE 4/5: Dynamic Color Flow (Frequency) ---
+
+        /** Renders the color flow controls. */
+        function renderColorFlowControls($container) {
+            const theme = STATE.isDarkMode ? THEMES.dark : THEMES.light;
+            $container.innerHTML = `
+                <div id="color-flow-controls" class="controls-panel flex flex-col items-center space-y-6 text-gray-900 dark:text-gray-100 p-8 rounded-2xl backdrop-blur-md bg-white/50 dark:bg-gray-900/50 shadow-xl">
+                    <h2 class="text-2xl font-bold mb-2">Color Flow Speed (Frequency)</h2>
+                    <input type="range" min="500" max="10000" value="${STATE.colorFlow.speed}" id="speed-slider" oninput="updateColorFlowSpeed(this.value)" class="w-64 h-2 rounded-full appearance-none cursor-pointer accent-pink-500 shadow-inner">
+                    <p class="text-xl">Cycle Time: <span id="speed-value" class="font-bold">${(STATE.colorFlow.speed / 1000).toFixed(1)}</span> seconds</p>
+                    <p class="text-sm text-center max-w-xs text-gray-700 dark:text-gray-300">Adjust the time it takes for the background to complete one full color transition.</p>
+                </div>
+            `;
+            $('screensaver-view').style.backgroundColor = theme.bg;
+            
+            // Ensure the main color change animation is running on the screensaver view
+            const $screensaverView = $('screensaver-view');
+            $screensaverView.classList.add('color-flow-active');
+            $screensaverView.style.animationDuration = `${STATE.colorFlow.speed}ms`;
+        }
+        
+        /**
+         * Updates the CSS animation speed based on slider input.
+         * @param {string} value - The speed in milliseconds as a string.
+         */
+        function updateColorFlowSpeed(value) {
+            const speedMs = parseInt(value);
+            STATE.colorFlow.speed = speedMs;
+            
+            $('speed-value').textContent = (speedMs / 1000).toFixed(1);
+            $('screensaver-view').style.animationDuration = `${speedMs}ms`;
+        }
+
+        // --- MODES 2 & 3: Horizontal and Vertical Lines (Canvas) ---
+
+        /** Renders the canvas element. */
+        function renderCanvas($container) {
+            $container.innerHTML = `<canvas id="${STATE.canvas.id}" class="h-full w-full"></canvas>`;
+            // Hide mode-specific controls
+            $('dashboard-controls')?.classList.add('hidden-mode');
+            setTimeout(() => {
+                // Show floating controls after transition completes
+                if (!STATE.timer.isFullScreen) {
+                    $('dashboard-controls')?.classList.remove('hidden-mode');
+                }
+            }, 500);
+        }
+        
+        /** Initializes the canvas context. */
+        function initCanvas() {
+            const canvas = $(STATE.canvas.id);
+            if (!canvas) return;
+
+            // Set canvas size to match container size
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+            STATE.canvas.ctx = canvas.getContext('2d');
+
+            // Handle window resize
+            window.onresize = () => {
+                if (STATE.mode === 'h-lines' || STATE.mode === 'v-lines') {
+                    canvas.width = canvas.offsetWidth;
+                    canvas.height = canvas.offsetHeight;
+                }
+            };
+        }
+
+        /**
+         * Starts the line animation loop.
+         * @param {string} direction - 'h-lines' or 'v-lines'
+         */
+        let lineAnimationTime = 0;
+        let lineCount = 30; // Number of lines to draw
+        
+        function startLineAnimation(direction) {
+            const ctx = STATE.canvas.ctx;
+            if (!ctx) return;
+            
+            const theme = STATE.isDarkMode ? THEMES.dark : THEMES.light;
+            const lineColor = theme.text;
+            const bgColor = theme.bg;
+
+            function draw() {
+                const canvas = $(STATE.canvas.id);
+                if (!canvas) return;
+                
+                const W = canvas.width;
+                const H = canvas.height;
+                const step = direction === 'h-lines' ? H / lineCount : W / lineCount;
+                lineAnimationTime += 0.02; // Speed of movement
+
+                // Clear background
+                ctx.fillStyle = bgColor;
+                ctx.fillRect(0, 0, W, H);
+
+                // Line properties
+                ctx.strokeStyle = lineColor;
+                ctx.lineWidth = 1;
+                ctx.globalAlpha = 0.5;
+
+                for (let i = 0; i < lineCount; i++) {
+                    ctx.beginPath();
+                    
+                    if (direction === 'h-lines') {
+                        // Horizontal movement
+                        let y = i * step;
+                        // Sin wave offset for fluid motion
+                        let offset = Math.sin(lineAnimationTime + i * 0.5) * 50; 
+                        
+                        ctx.moveTo(offset, y);
+                        ctx.lineTo(W + offset, y);
+                        
+                    } else if (direction === 'v-lines') {
+                        // Vertical movement
+                        let x = i * step;
+                        // Sin wave offset for fluid motion
+                        let offset = Math.sin(lineAnimationTime + i * 0.5) * 50; 
+                        
+                        ctx.moveTo(x, offset);
+                        ctx.lineTo(x, H + offset);
+                    }
+                    
+                    ctx.stroke();
+                }
+
+                STATE.canvas.animationFrameId = requestAnimationFrame(draw);
+            }
+
+            // Start the loop
+            draw();
+        }
+
+    </script>
+
+</body>
+</html>
